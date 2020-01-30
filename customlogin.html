@@ -1,0 +1,122 @@
+<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 4.01//EN" "http://www.w3.org/TR/html4/strict.dtd">
+<html>
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="none" />
+
+    <title>{{pageTitle}}</title>
+    {{{SignInWidgetResources}}}
+</head>
+<body>
+    <div><H3 id="debug"></H3></div>
+    <div class="login-bg-image" style="background-image: {{bgImageUrl}}"></div>
+    <div id="okta-login-container"></div>
+
+    <!--
+        "OktaUtil" defines a global OktaUtil object
+        that contains methods used to complete the Okta login flow.
+     -->
+    {{{OktaUtil}}}
+
+    <script type="text/javascript">
+		// "config" object contains default widget configuration
+        // with any custom overrides defined in your admin settings.
+        var config = OktaUtil.getSignInWidgetConfig();
+        
+		var redirectSvc = 'https://oktacustomlogin-joewitt99762476.codeanyapp.com/redirect';
+
+        //get the stateToken
+		var stateToken = getQueryString('stateToken');
+		//get the fromURI
+        var fromURI = getQueryString('fromURI');	
+		//get the fromMobile.  This value will be used to handle 
+		//logic to bypass the session redirect.
+        var fromMobile = getQueryString('fromMobile');
+
+		//change the signOutLink to the fromURI so the user is 
+		//redirected back to the mobile application.
+		if(fromMobile) {
+        	config.signOutLink = fromURI;
+        }
+        
+		//If there is a fromURI set it in the config.relayState
+        if(fromURI)
+        	config.relayState = fromURI;
+        
+        //If there is a stateToken set in in the config.stateToken
+        if(stateToken)
+			config.stateToken = stateToken;
+
+        // Render the Okta Sign-In Widget
+        var oktaSignIn = new OktaSignIn(config);
+        oktaSignIn.renderEl({ el: '#okta-login-container' },
+            function(res) {
+            	if(fromMobile) {
+                    //force the browser to the redirect service
+                    location.href = redirectSvc + "?sessionToken=" + res.session.token + "&fromURI=" + fromURI;
+                } else {                                                                 
+            		OktaUtil.completeLogin(res);
+                }
+            },
+            function(error) {
+                // Logs errors that occur when configuring the widget.
+                // Remove or replace this with your own custom error handler.
+                console.log(error.message, error);
+            }
+        );
+
+        function getQueryString() {
+          var key = false, res = {}, itm = null;
+          // get the query string without the ?
+          var qs = location.search.substring(1);
+          // check for the key as an argument
+          if (arguments.length > 0 && arguments[0].length > 1)
+            key = arguments[0];
+          // make a regex pattern to grab key/value
+          var pattern = /([^&=]+)=([^&]*)/g;
+          // loop the items in the query string, either
+          // find a match to the argument, or build an object
+          // with key/value pairs
+          while (itm = pattern.exec(qs)) {
+            if (key !== false && decodeURIComponent(itm[1]) === key)
+              return decodeURIComponent(itm[2]);
+            else if (key === false)
+              res[decodeURIComponent(itm[1])] = decodeURIComponent(itm[2]);
+          }
+
+          return key === false ? res : null;
+    }
+
+        function getLocation() {
+          document.getElementById("debug").innerHTML = location.href;
+        }
+
+        getLocation();
+
+        function parseURL(url) {
+        	var parser = document.createElement('a'),
+                searchObject = {},
+                queries, split, i;
+            // Let the browser do the work
+            parser.href = url;
+            // Convert query string to object
+            queries = parser.search.replace(/^\?/, '').split('&');
+            for( i = 0; i < queries.length; i++ ) {
+                split = queries[i].split('=');
+                searchObject[split[0]] = split[1];
+            }
+            return {
+                protocol: parser.protocol,
+                host: parser.host,
+                hostname: parser.hostname,
+                port: parser.port,
+                pathname: parser.pathname,
+                search: parser.search,
+                searchObject: searchObject,
+                hash: parser.hash
+            };
+        };
+    </script>
+</body>
+</html>
